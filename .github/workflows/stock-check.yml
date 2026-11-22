@@ -22,8 +22,8 @@ jobs:
 
       - name: Run stock check
         env:
-          CALLMEBOT_PHONE: ${{ secrets.CALLMEBOT_PHONE }}
-          CALLMEBOT_APIKEY: ${{ secrets.CALLMEBOT_APIKEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           # Optional repo variable: narrow to specific hoodies, e.g. "DNA,BRUTALITY".
           # Leave unset to watch every hoodie in the collection.
           WATCH_PRODUCTS: ${{ vars.WATCH_PRODUCTS }}

@@ -1,9 +1,12 @@
 # ZiBrand hoodie stock watcher
 
 Watches the [ZiBrand hoodies collection](https://www.zibrand.store/collections/hoodies)
-and sends you a **WhatsApp message the moment a hoodie opens for order** (when it
+and sends you a **Telegram message the moment a hoodie opens for order** (when it
 stops being "coming soon"). Runs for free in the cloud via GitHub Actions — your
 PC can be off.
+
+> Originally planned for WhatsApp, but the free CallMeBot relay closed new
+> signups, so this uses Telegram instead — free, instant, and far more reliable.
 
 ## How it works
 
@@ -21,15 +24,19 @@ already open, so you're pinged only on the change — not every run.
 
 ## Setup (one-time, ~10 minutes)
 
-### 1. Set up CallMeBot WhatsApp (you must do this — it's tied to your phone)
+### 1. Create a Telegram bot and get your chat ID (you must do this)
 
-1. Save this phone number to your contacts: **+34 621 331 709** (CallMeBot).
-2. From your WhatsApp, send it this exact message: **`I allow callmebot to send me messages`**
-3. You'll get a reply with your personal **API key** (a number). Keep it.
-   - Your phone number for the next step is in international format with no `+`,
-     e.g. Egypt mobile `01012345678` → `201012345678`.
+1. In Telegram, open a chat with **@BotFather**, send `/newbot`, and follow the
+   prompts. It gives you a **bot token** like `123456789:AAE...xyz`. Keep it.
+2. Open a chat with **your new bot** and send it any message (e.g. `hi`). This is
+   required — a bot can't message you until you've messaged it first.
+3. Get your **chat ID**: open a chat with **@userinfobot** and it replies with
+   your numeric ID (e.g. `5566778899`). That's your `TELEGRAM_CHAT_ID`.
+   - Alternative: after step 2, visit
+     `https://api.telegram.org/bot<YOUR_TOKEN>/getUpdates` in a browser and read
+     the `"chat":{"id": ...}` value.
 
-Docs: https://www.callmebot.com/blog/free-api-whatsapp-messages/
+Docs: https://core.telegram.org/bots#how-do-i-create-a-bot
 
 ### 2. Put the code on GitHub
 
@@ -43,15 +50,15 @@ gh repo create zi-brand-watcher --private --source . --remote origin --push
 Or create the repo on github.com and follow its "push an existing repository"
 instructions.
 
-### 3. Add your WhatsApp secrets to the repo
+### 3. Add your Telegram secrets to the repo
 
 In the GitHub repo: **Settings → Secrets and variables → Actions → New repository secret**.
 Add two secrets:
 
 | Name | Value |
 |---|---|
-| `CALLMEBOT_PHONE` | your number in international format, no `+` (e.g. `201012345678`) |
-| `CALLMEBOT_APIKEY` | the API key CallMeBot sent you |
+| `TELEGRAM_BOT_TOKEN` | the bot token from @BotFather (e.g. `123456789:AAE...xyz`) |
+| `TELEGRAM_CHAT_ID` | your numeric chat ID (e.g. `5566778899`) |
 
 *(Optional)* To watch only specific hoodies instead of all of them, add a
 repository **variable** (not secret) named `WATCH_PRODUCTS`, e.g. `DNA,BRUTALITY`.
@@ -65,21 +72,26 @@ you won't get a message yet; you will the moment a hoodie opens.
 
 ---
 
-## Test the WhatsApp alert works
+## Test the alert works
 
-Trigger one run manually (step 4). To force a test message, you can temporarily
-edit `state.json`'s `last_checked` — but the cleanest test is to confirm the run
-log shows `Checked N products` with no errors, which means the feed fetch and
-state logic work. The WhatsApp path is exercised automatically on the first real
-transition.
+Trigger one run manually (step 4). The cleanest check is to confirm the run log
+shows `Checked N products` with no `[error]` lines — that means the feed fetch,
+state logic, and credentials are all wired up. The Telegram message itself is
+sent automatically on the first real transition to available.
 
 ## Run locally (optional)
 
 Requires Python 3 (the cloud runner already has it; Windows may not).
 
 ```powershell
-$env:CALLMEBOT_PHONE="201012345678"; $env:CALLMEBOT_APIKEY="123456"; python3 check_stock.py
+$env:TELEGRAM_BOT_TOKEN="123456789:AAE...xyz"; $env:TELEGRAM_CHAT_ID="5566778899"; python3 check_stock.py
 ```
+
+To confirm Telegram delivery works end-to-end, temporarily put a real variant ID
+in `state.json`'s `available` list, run once (you'll get a "newly available"
+ping for everything *not* in that list — or just trust the first real run). The
+simplest check: a manual workflow run that logs `Checked N products` with no
+`[error]` lines means the pipeline is healthy.
 
 ## Tuning
 
@@ -87,8 +99,9 @@ $env:CALLMEBOT_PHONE="201012345678"; $env:CALLMEBOT_APIKEY="123456"; python3 che
   (`*/5 * * * *` = every 5 min; GitHub's minimum for scheduled jobs).
 - **Which hoodies:** set the `WATCH_PRODUCTS` repo variable.
 
-## Not using CallMeBot?
+## Want WhatsApp instead of Telegram?
 
-CallMeBot is a free community relay — fine for personal alerts. For something
-more robust you can swap `send_whatsapp()` in `check_stock.py` for Twilio's
-WhatsApp API (needs a Twilio account and credentials).
+Swap the `send_telegram()` function in `check_stock.py` for a WhatsApp provider:
+- **CallMeBot** (free) — re-opens signups periodically; was full at build time.
+- **TextMeBot** (low cost) — same simple HTTP API as CallMeBot.
+- **Twilio WhatsApp** (official) — most robust, needs a Twilio account.

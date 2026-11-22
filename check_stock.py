@@ -31,8 +31,8 @@ STATE_FILE = os.environ.get("STATE_FILE", "state.json")
 # e.g. WATCH_PRODUCTS="DNA,BRUTALITY"
 WATCH = [w.strip().lower() for w in os.environ.get("WATCH_PRODUCTS", "").split(",") if w.strip()]
 
-CALLMEBOT_PHONE = os.environ.get("CALLMEBOT_PHONE", "").strip()
-CALLMEBOT_APIKEY = os.environ.get("CALLMEBOT_APIKEY", "").strip()
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
 
 MAX_LINES = 30  # cap message length if the whole store opens at once
 UA = "Mozilla/5.0 (compatible; zibrand-stock-watcher/1.0)"
@@ -89,22 +89,22 @@ def save_state(available_keys):
         )
 
 
-def send_whatsapp(text):
-    if not (CALLMEBOT_PHONE and CALLMEBOT_APIKEY):
-        print("[warn] CALLMEBOT_PHONE / CALLMEBOT_APIKEY not set — skipping send.")
+def send_telegram(text):
+    if not (TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID):
+        print("[warn] TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID not set — skipping send.")
         print("[message that would have been sent]\n" + text)
         return
-    params = urllib.parse.urlencode(
-        {"phone": CALLMEBOT_PHONE, "text": text, "apikey": CALLMEBOT_APIKEY}
-    )
-    url = "https://api.callmebot.com/whatsapp.php?" + params
-    req = urllib.request.Request(url, headers={"User-Agent": UA})
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    data = urllib.parse.urlencode(
+        {"chat_id": TELEGRAM_CHAT_ID, "text": text}
+    ).encode("utf-8")
+    req = urllib.request.Request(url, data=data, headers={"User-Agent": UA})
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
             body = resp.read().decode("utf-8", "ignore")[:200]
-            print("[whatsapp]", resp.status, body)
+            print("[telegram]", resp.status, body)
     except Exception as e:  # noqa: BLE001 - never let a send error crash the run
-        print("[error] WhatsApp send failed:", e)
+        print("[error] Telegram send failed:", e)
 
 
 def build_message(newly):
@@ -130,7 +130,7 @@ def main():
     )
 
     if newly:
-        send_whatsapp(build_message(newly))
+        send_telegram(build_message(newly))
 
     save_state(set(current.keys()))
     return 0
