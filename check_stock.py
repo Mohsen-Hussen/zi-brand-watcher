@@ -122,6 +122,15 @@ def build_message(newly):
 
 
 def main():
+    # Manual test: lets you confirm Telegram delivery works without waiting for a
+    # real drop. Triggered from the Actions "Run workflow" test checkbox.
+    if os.environ.get("TEST_SEND", "").lower() in ("1", "true", "yes"):
+        send_telegram(
+            "Test alert: your ZiBrand hoodie watcher is wired up correctly. "
+            "You'll get a message here the moment a hoodie opens for order."
+        )
+        return 0
+
     products = fetch_products()
     current = current_available(products)
     prev_keys = load_prev_keys()

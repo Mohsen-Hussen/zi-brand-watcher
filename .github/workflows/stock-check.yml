@@ -5,7 +5,12 @@ on:
     # Every 5 minutes. GitHub runs scheduled jobs on a best-effort basis,
     # so real intervals can drift to ~5-15 min under load. Good enough for a drop.
     - cron: "*/5 * * * *"
-  workflow_dispatch: {}   # lets you trigger a run manually from the Actions tab
+  workflow_dispatch:      # lets you trigger a run manually from the Actions tab
+    inputs:
+      test:
+        description: "Send a test Telegram message instead of checking stock"
+        type: boolean
+        default: false
 
 permissions:
   contents: write         # needed to commit the updated state.json back
@@ -24,6 +29,7 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TEST_SEND: ${{ github.event.inputs.test }}
           # Optional repo variable: narrow to specific hoodies, e.g. "DNA,BRUTALITY".
           # Leave unset to watch every hoodie in the collection.
           WATCH_PRODUCTS: ${{ vars.WATCH_PRODUCTS }}

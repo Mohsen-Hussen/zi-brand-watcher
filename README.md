@@ -74,10 +74,14 @@ you won't get a message yet; you will the moment a hoodie opens.
 
 ## Test the alert works
 
-Trigger one run manually (step 4). The cleanest check is to confirm the run log
-shows `Checked N products` with no `[error]` lines — that means the feed fetch,
-state logic, and credentials are all wired up. The Telegram message itself is
-sent automatically on the first real transition to available.
+After you've added the `TELEGRAM_BOT_TOKEN` secret:
+
+1. Go to the repo's **Actions** tab → **ZiBrand stock watcher** → **Run workflow**.
+2. **Tick the "Send a test Telegram message" box**, then run it.
+3. You should get a Telegram message within a few seconds confirming it's wired up.
+
+A normal (unticked) run instead checks stock and logs `Checked N products` —
+the real alert fires automatically the moment a hoodie opens for order.
 
 ## Run locally (optional)
 
