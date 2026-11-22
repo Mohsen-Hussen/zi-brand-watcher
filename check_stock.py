@@ -76,13 +76,16 @@ def load_prev_keys():
 
 
 def save_state(available_keys):
+    # Note: last_checked is a DATE (not a timestamp) on purpose. state.json then
+    # only changes once per day (or when availability changes), so GitHub commits
+    # it ~once a day. That daily commit keeps the repo "active" so GitHub never
+    # auto-disables the scheduled workflow (which happens after 60 days idle),
+    # while avoiding a commit on every single run.
     with open(STATE_FILE, "w", encoding="utf-8") as f:
         json.dump(
             {
                 "available": sorted(available_keys),
-                "last_checked": time.strftime(
-                    "%Y-%m-%d %H:%M:%S UTC", time.gmtime()
-                ),
+                "last_checked": time.strftime("%Y-%m-%d", time.gmtime()),
             },
             f,
             indent=2,
