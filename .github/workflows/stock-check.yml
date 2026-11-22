@@ -1,0 +1,42 @@
+name: ZiBrand stock watcher
+
+on:
+  schedule:
+    # Every 5 minutes. GitHub runs scheduled jobs on a best-effort basis,
+    # so real intervals can drift to ~5-15 min under load. Good enough for a drop.
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}   # lets you trigger a run manually from the Actions tab
+
+permissions:
+  contents: write         # needed to commit the updated state.json back
+
+concurrency:
+  group: stock-watcher
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run stock check
+        env:
+          CALLMEBOT_PHONE: ${{ secrets.CALLMEBOT_PHONE }}
+          CALLMEBOT_APIKEY: ${{ secrets.CALLMEBOT_APIKEY }}
+          # Optional repo variable: narrow to specific hoodies, e.g. "DNA,BRUTALITY".
+          # Leave unset to watch every hoodie in the collection.
+          WATCH_PRODUCTS: ${{ vars.WATCH_PRODUCTS }}
+        run: python3 check_stock.py
+
+      - name: Persist state
+        run: |
+          if ! git diff --quiet -- state.json; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add state.json
+            git commit -m "update stock state [skip ci]"
+            git push
+          else
+            echo "No state change."
+          fi
