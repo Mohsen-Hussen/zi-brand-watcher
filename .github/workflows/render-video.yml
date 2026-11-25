@@ -44,27 +44,27 @@ jobs:
           f=$(ls out/*.webm | head -n1); mv "$f" out/video.webm
           ls -la out
 
-      - name: Assemble narration (synced to recording)
+      - name: Assemble narration + find tight end point
         run: python assemble_audio.py
 
       - name: Build music, mix audio, mux final MP4
         run: |
-          T=$(ffprobe -v error -show_entries format=duration -of csv=p=0 out/video.webm)
-          echo "video length = $T"
+          END=$(python -c "import json;print(json.load(open('out/meta.json'))['end_ms']/1000.0)")
+          echo "trim to $END s"
 
-          # warm ambient pad (root/fifth/octave), length of the video
+          # warm ambient pad (root/fifth/octave), length of the trimmed video
           ffmpeg -y \
-            -f lavfi -i "sine=frequency=165:duration=$T" \
-            -f lavfi -i "sine=frequency=247:duration=$T" \
-            -f lavfi -i "sine=frequency=330:duration=$T" \
+            -f lavfi -i "sine=frequency=165:duration=$END" \
+            -f lavfi -i "sine=frequency=247:duration=$END" \
+            -f lavfi -i "sine=frequency=330:duration=$END" \
             -filter_complex "[0][1][2]amix=inputs=3:normalize=0,volume=0.3,tremolo=f=0.10:d=0.35,aecho=0.8:0.85:900:0.22,lowpass=f=1300[m]" \
             -map "[m]" -ac 2 out/music.wav
 
-          FO=$(awk "BEGIN{print $T-3}")
+          FO=$(awk "BEGIN{print $END-2.5}")
           ffmpeg -y -i out/video.webm -i out/narration.wav -i out/music.wav \
-            -filter_complex "[2:a]volume=0.12,afade=t=in:st=0:d=2,afade=t=out:st=$FO:d=3[mus];[1:a]volume=1.2,aresample=44100[voc];[voc][mus]amix=inputs=2:normalize=0:duration=longest[mix]" \
-            -map 0:v -map "[mix]" -c:v libx264 -pix_fmt yuv420p -crf 20 -preset medium \
-            -c:a aac -b:a 192k -movflags +faststart -shortest out/zibrand-drop-alert.mp4
+            -filter_complex "[2:a]volume=0.12,afade=t=in:st=0:d=2,afade=t=out:st=$FO:d=2.5[mus];[1:a]volume=1.2,aresample=44100[voc];[voc][mus]amix=inputs=2:normalize=0:duration=longest[mix]" \
+            -map 0:v -map "[mix]" -t "$END" -c:v libx264 -pix_fmt yuv420p -crf 20 -preset medium \
+            -c:a aac -b:a 192k -movflags +faststart out/zibrand-drop-alert.mp4
           ls -la out
 
       - name: Upload MP4
