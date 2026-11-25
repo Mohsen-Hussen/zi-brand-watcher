@@ -350,10 +350,15 @@
     label.textContent = (idx+1)+' / '+scenes.length+'  ·  '+scenes[idx].getAttribute('data-name');
   }
 
+  // notify the renderer (real wall-clock) each time a scene becomes active,
+  // so the voiceover can be aligned to the actual recording timeline
+  function notifyScene(){ try{ window.__idx=idx; if(window.__onScene){ window.__onScene(idx); } }catch(e){} }
+
   function goTo(i,keepPlay){
     idx=Math.max(0,Math.min(scenes.length-1,i));
     elapsed=0;last=performance.now();
     if(keepPlay===false){stopPlay();}
+    notifyScene();
     paint();
   }
 
@@ -363,7 +368,7 @@
     var d=dur(idx);
     if(elapsed>=d){
       if(idx>=scenes.length-1){elapsed=d;paint();stopPlay(true);return;}
-      idx++;elapsed=0;paint();
+      idx++;elapsed=0;notifyScene();paint();
     } else { paint(); }
     raf=requestAnimationFrame(tick);
   }

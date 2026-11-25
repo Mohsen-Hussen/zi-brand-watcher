@@ -38,21 +38,19 @@ jobs:
       - name: Generate voiceover + scene timings
         run: python tts.py
 
-      - name: Record the animation (audio-synced)
+      - name: Record the animation (captures real scene timings)
         run: |
           node render.js
+          f=$(ls out/*.webm | head -n1); mv "$f" out/video.webm
           ls -la out
+
+      - name: Assemble narration (synced to recording)
+        run: python assemble_audio.py
 
       - name: Build music, mix audio, mux final MP4
         run: |
-          f=$(ls out/*.webm | head -n1); mv "$f" out/video.webm
           T=$(ffprobe -v error -show_entries format=duration -of csv=p=0 out/video.webm)
-          PR=$(python -c "import json;print(json.load(open('out/preroll.json'))['preroll_ms']/1000.0)")
-          echo "video length=$T  preroll=$PR"
-
-          # final narration = pre-roll silence + core narration
-          ffmpeg -y -f lavfi -t "$PR" -i anullsrc=r=44100:cl=stereo -i out/narration_core.wav \
-            -filter_complex "[0][1]concat=n=2:v=0:a=1[n]" -map "[n]" out/narration.wav
+          echo "video length = $T"
 
           # warm ambient pad (root/fifth/octave), length of the video
           ffmpeg -y \
@@ -64,7 +62,7 @@ jobs:
 
           FO=$(awk "BEGIN{print $T-3}")
           ffmpeg -y -i out/video.webm -i out/narration.wav -i out/music.wav \
-            -filter_complex "[2:a]volume=0.12,afade=t=in:st=0:d=2,afade=t=out:st=$FO:d=3[mus];[1:a]volume=1.15,aresample=44100[voc];[voc][mus]amix=inputs=2:normalize=0:duration=longest[mix]" \
+            -filter_complex "[2:a]volume=0.12,afade=t=in:st=0:d=2,afade=t=out:st=$FO:d=3[mus];[1:a]volume=1.2,aresample=44100[voc];[voc][mus]amix=inputs=2:normalize=0:duration=longest[mix]" \
             -map 0:v -map "[mix]" -c:v libx264 -pix_fmt yuv420p -crf 20 -preset medium \
             -c:a aac -b:a 192k -movflags +faststart -shortest out/zibrand-drop-alert.mp4
           ls -la out
