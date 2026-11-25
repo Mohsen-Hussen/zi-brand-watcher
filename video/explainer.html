@@ -399,12 +399,19 @@
 
   paint();
 
-  // auto-play + clean full frame when rendered to video (?record)
+  // external scene durations (audio-synced render) applied before play
+  try{
+    if(window.__durations && window.__durations.length===scenes.length){
+      scenes.forEach(function(s,i){ s.setAttribute('data-dur', String(window.__durations[i])); });
+    }
+  }catch(e){}
+  window.__startStory=function(){ goTo(0,true); startPlay(); };
+
   if(/record/i.test(location.search+location.hash)){
     document.body.classList.add('recording');
-    var begin=function(){goTo(0,true);startPlay();};
-    if(document.fonts&&document.fonts.ready){document.fonts.ready.then(function(){setTimeout(begin,250);});}
-    else{setTimeout(begin,400);}
+    // renderer triggers __startStory() at a measured instant for audio sync;
+    // fall back to auto-start if opened manually
+    setTimeout(function(){ if(!playing && !window.__storyDone){ window.__startStory(); } }, 4000);
   }
 })();
 </script>

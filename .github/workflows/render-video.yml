@@ -16,26 +16,57 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Install dependencies
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Install Node deps
         run: npm install
 
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Record the explainer
+      - name: Install Python deps
+        run: pip install edge-tts pydub
+
+      - name: Prepare output dir
+        run: mkdir -p out
+
+      - name: Generate voiceover + scene timings
+        run: python tts.py
+
+      - name: Record the animation (audio-synced)
         run: |
-          mkdir -p out
           node render.js
           ls -la out
 
-      - name: Install ffmpeg
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
-
-      - name: Convert to MP4 (H.264)
+      - name: Build music, mix audio, mux final MP4
         run: |
-          f=$(ls out/*.webm | head -n1)
-          echo "Recorded file: $f"
-          ffmpeg -y -i "$f" -vf "fps=30,format=yuv420p" -c:v libx264 -preset medium -crf 20 -movflags +faststart out/zibrand-drop-alert.mp4
+          f=$(ls out/*.webm | head -n1); mv "$f" out/video.webm
+          T=$(ffprobe -v error -show_entries format=duration -of csv=p=0 out/video.webm)
+          PR=$(python -c "import json;print(json.load(open('out/preroll.json'))['preroll_ms']/1000.0)")
+          echo "video length=$T  preroll=$PR"
+
+          # final narration = pre-roll silence + core narration
+          ffmpeg -y -f lavfi -t "$PR" -i anullsrc=r=44100:cl=stereo -i out/narration_core.wav \
+            -filter_complex "[0][1]concat=n=2:v=0:a=1[n]" -map "[n]" out/narration.wav
+
+          # warm ambient pad (root/fifth/octave), length of the video
+          ffmpeg -y \
+            -f lavfi -i "sine=frequency=165:duration=$T" \
+            -f lavfi -i "sine=frequency=247:duration=$T" \
+            -f lavfi -i "sine=frequency=330:duration=$T" \
+            -filter_complex "[0][1][2]amix=inputs=3:normalize=0,volume=0.3,tremolo=f=0.10:d=0.35,aecho=0.8:0.85:900:0.22,lowpass=f=1300[m]" \
+            -map "[m]" -ac 2 out/music.wav
+
+          FO=$(awk "BEGIN{print $T-3}")
+          ffmpeg -y -i out/video.webm -i out/narration.wav -i out/music.wav \
+            -filter_complex "[2:a]volume=0.12,afade=t=in:st=0:d=2,afade=t=out:st=$FO:d=3[mus];[1:a]volume=1.15,aresample=44100[voc];[voc][mus]amix=inputs=2:normalize=0:duration=longest[mix]" \
+            -map 0:v -map "[mix]" -c:v libx264 -pix_fmt yuv420p -crf 20 -preset medium \
+            -c:a aac -b:a 192k -movflags +faststart -shortest out/zibrand-drop-alert.mp4
           ls -la out
 
       - name: Upload MP4
