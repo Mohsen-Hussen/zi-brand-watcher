@@ -1,0 +1,9 @@
+{
+  "name": "zi-brand-drop-video",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Renders the ZiBrand Drop Alert explainer to an MP4 video.",
+  "devDependencies": {
+    "playwright": "1.49.1"
+  }
+}

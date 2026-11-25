@@ -1,0 +1,410 @@
+<title>ZiBrand Drop Alert</title>
+<meta name="description" content="Animated explainer for a Telegram bot that alerts you the moment a hoodie drops.">
+<style>
+  /* Layout: a fixed 16:9 cinematic stage (scales to fit) that plays as a story,
+     with story-style segmented progress on top and a control bar below. */
+  :root{
+    --bg:#120a1e;           /* deep aubergine night */
+    --bg2:#1d1130;          /* raised panel */
+    --bg3:#271842;          /* card */
+    --ink:#f4eede;          /* warm cream */
+    --muted:#bca9d6;        /* muted lilac */
+    --brand:#8b5cf6;        /* "coming soon" purple */
+    --brand-ink:#c4b1ff;
+    --go:#5ce1b0;           /* available / alert green */
+    --go-ink:#8ff3d2;
+    --amber:#ffb25e;        /* accent warm */
+    --line:rgba(255,255,255,.12);
+    --line2:rgba(255,255,255,.07);
+    color-scheme:dark;
+    --dfont:"Bricolage Grotesque",system-ui,sans-serif;
+    --bfont:"Inter",system-ui,sans-serif;
+    --mfont:"JetBrains Mono",ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:
+      radial-gradient(1200px 700px at 80% -10%,rgba(139,92,246,.22),transparent 60%),
+      radial-gradient(900px 600px at 0% 110%,rgba(92,225,176,.14),transparent 55%),
+      var(--bg);
+    color:var(--ink);font-family:var(--bfont);
+    min-height:100%;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:18px;padding:18px max(16px,env(safe-area-inset-left,0px));
+  }
+  html,body{height:100%}
+
+  /* ---------- Stage ---------- */
+  .stage{
+    position:relative;width:min(94vw,calc((100dvh - 150px) * 16/9));
+    aspect-ratio:16/9;max-width:1120px;
+    background:linear-gradient(160deg,var(--bg2),#160c26 70%);
+    border:1px solid var(--line);border-radius:20px;overflow:hidden;
+    box-shadow:0 30px 80px -30px rgba(0,0,0,.8),inset 0 1px 0 rgba(255,255,255,.05);
+    container-type:size;
+  }
+  .scene{
+    position:absolute;inset:0;padding:7cqh 8cqw;
+    display:flex;flex-direction:column;justify-content:center;gap:2.4cqh;
+    opacity:0;visibility:hidden;transition:opacity .5s ease;
+  }
+  .scene.active{opacity:1;visibility:visible}
+
+  /* staggered reveal of children */
+  .r{opacity:0;transform:translateY(16px);transition:opacity .7s ease,transform .7s cubic-bezier(.2,.7,.2,1)}
+  .scene.active .r{opacity:1;transform:none;transition-delay:var(--d,0ms)}
+
+  .eyebrow{font-family:var(--mfont);font-size:1.9cqh;letter-spacing:.28em;text-transform:uppercase;color:var(--brand-ink)}
+  .eyebrow.go{color:var(--go-ink)}
+  h1{font-family:var(--dfont);font-weight:800;line-height:.98;margin:0;text-wrap:balance;letter-spacing:-.02em}
+  h2{font-family:var(--dfont);font-weight:700;line-height:1.02;margin:0;text-wrap:balance;letter-spacing:-.015em}
+  p.lead{margin:0;color:var(--muted);line-height:1.45}
+
+  /* ---------- Scene 1 : title ---------- */
+  .s-title h1{font-size:10.5cqw}
+  .s-title .sub{font-size:3cqh;color:var(--muted);max-width:70cqw}
+  .badge-pill{display:inline-flex;align-items:center;gap:.6em;background:rgba(139,92,246,.16);
+    border:1px solid rgba(139,92,246,.4);color:var(--brand-ink);padding:.5em 1em;border-radius:999px;
+    font-family:var(--mfont);font-size:1.9cqh;letter-spacing:.1em;width:max-content}
+  .dot{width:.7em;height:.7em;border-radius:50%;background:var(--brand);box-shadow:0 0 12px var(--brand)}
+  .dot.go{background:var(--go);box-shadow:0 0 14px var(--go);animation:pulse 1.6s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+  /* ---------- generic card rows ---------- */
+  .row{display:flex;gap:2.4cqw;flex-wrap:wrap}
+  .card{background:var(--bg3);border:1px solid var(--line);border-radius:14px;padding:2.6cqh 2.4cqw;flex:1;min-width:0}
+  .card h3{margin:0 0 .5em;font-family:var(--dfont);font-size:3cqh;font-weight:700}
+  .card p{margin:0;color:var(--muted);font-size:2.1cqh;line-height:1.4}
+
+  /* ---------- Scene 2 : problem (mock product cards) ---------- */
+  .hoodies{display:grid;grid-template-columns:repeat(4,1fr);gap:2cqw}
+  .hoodie{background:var(--bg3);border:1px solid var(--line2);border-radius:12px;overflow:hidden}
+  .hoodie .ph{aspect-ratio:1;background:
+      radial-gradient(circle at 50% 38%,rgba(255,255,255,.08),transparent 60%),#2b1c47;
+    display:flex;align-items:center;justify-content:center}
+  .hoodie .ph svg{width:46%;height:46%;opacity:.8}
+  .hoodie .meta{padding:1.4cqh 1.2cqw;display:flex;flex-direction:column;gap:.5cqh}
+  .hoodie .nm{font-family:var(--dfont);font-weight:700;font-size:2cqh}
+  .hoodie .cs{font-family:var(--mfont);font-size:1.5cqh;letter-spacing:.08em;color:var(--brand-ink);
+    background:rgba(139,92,246,.16);border:1px solid rgba(139,92,246,.35);border-radius:999px;
+    padding:.25em .7em;width:max-content}
+  .hoodie .pr{color:var(--muted);font-size:1.7cqh}
+
+  /* ---------- Scene 4 : pipeline ---------- */
+  .pipe{display:flex;align-items:stretch;gap:0;flex-wrap:nowrap}
+  .node{flex:1;background:var(--bg3);border:1px solid var(--line);border-radius:14px;padding:2.4cqh 1.6cqw;
+    display:flex;flex-direction:column;gap:.8cqh;min-width:0}
+  .node .ico{font-size:4cqh;line-height:1}
+  .node .t{font-family:var(--dfont);font-weight:700;font-size:2.2cqh}
+  .node .d{color:var(--muted);font-size:1.7cqh;line-height:1.35}
+  .arrow{display:flex;align-items:center;justify-content:center;padding:0 1cqw;color:var(--go);font-size:3.4cqh;font-weight:800}
+
+  /* ---------- Scene 5 : telegram steps ---------- */
+  .steps{display:flex;flex-direction:column;gap:1.6cqh}
+  .step{display:flex;align-items:center;gap:2cqw}
+  .num{flex:none;width:4.6cqh;height:4.6cqh;border-radius:50%;background:rgba(92,225,176,.14);
+    border:1px solid var(--go);color:var(--go-ink);display:flex;align-items:center;justify-content:center;
+    font-family:var(--mfont);font-weight:700;font-size:2.1cqh}
+  .step .tx{font-size:2.35cqh;line-height:1.3}
+  .step .tx b{color:var(--ink)}
+  .step .tx code{font-family:var(--mfont);background:rgba(255,255,255,.07);border:1px solid var(--line);
+    padding:.08em .45em;border-radius:6px;color:var(--brand-ink);font-size:.92em}
+
+  /* ---------- Scene 6 : code ---------- */
+  .codewrap{display:grid;grid-template-columns:1fr 1fr;gap:2.2cqw}
+  .code{background:#0e0819;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .code .bar{display:flex;align-items:center;gap:.6cqw;padding:1.1cqh 1.4cqw;border-bottom:1px solid var(--line2);
+    font-family:var(--mfont);font-size:1.6cqh;color:var(--muted)}
+  .code .bar i{width:1.1cqh;height:1.1cqh;border-radius:50%;background:#44335c;display:inline-block}
+  .code pre{margin:0;padding:1.6cqh 1.6cqw;font-family:var(--mfont);font-size:1.72cqh;line-height:1.5;
+    white-space:pre;overflow:hidden}
+  .kw{color:#c792ea}.fn{color:#82aaff}.st{color:var(--go-ink)}.cm{color:#6b5b86}.nm2{color:var(--amber)}
+  .codewrap.full{grid-template-columns:1fr}
+  .wide{grid-column:1/-1}
+
+  /* ---------- Scene 8 : phone ---------- */
+  .payoff{display:flex;align-items:center;gap:6cqw}
+  .phone{flex:none;width:34cqh;max-width:40cqw;aspect-ratio:9/19;background:#0c0714;border:1.4cqh solid #241636;
+    border-radius:5cqh;padding:2cqh 1.6cqh;display:flex;flex-direction:column;gap:1.4cqh;box-shadow:0 20px 50px -20px #000}
+  .tgbar{display:flex;align-items:center;gap:1.4cqh;padding-bottom:1.4cqh;border-bottom:1px solid var(--line2)}
+  .ava{flex:none;width:5cqh;height:5cqh;border-radius:50%;background:linear-gradient(140deg,var(--go),#2bb98a);
+    display:flex;align-items:center;justify-content:center;font-family:var(--dfont);font-weight:800;color:#06251a;font-size:2.2cqh}
+  .tgbar .nm{font-family:var(--dfont);font-weight:700;font-size:2cqh}
+  .tgbar .st2{font-size:1.4cqh;color:var(--muted)}
+  .bubble{background:#17283a;border-radius:2cqh;border-top-left-radius:.5cqh;padding:1.6cqh;font-size:1.7cqh;line-height:1.45;
+    align-self:flex-start;max-width:92%}
+  .bubble .hl{color:var(--go-ink);font-weight:700}
+  .bubble a,.bubble .lk{color:#7fd0ff}
+  .bubble .tm{display:block;text-align:right;color:var(--muted);font-size:1.3cqh;margin-top:.6cqh}
+
+  /* ---------- Scene 9 : outro ---------- */
+  .s-outro h2{font-size:7cqw}
+  .repo{font-family:var(--mfont);font-size:2.4cqh;color:var(--go-ink);background:rgba(92,225,176,.1);
+    border:1px solid rgba(92,225,176,.3);border-radius:10px;padding:.7em 1em;width:max-content;max-width:100%;word-break:break-all}
+  .kick{color:var(--muted);font-size:2.1cqh}
+
+  /* ---------- progress ---------- */
+  .progress{position:absolute;top:0;left:0;right:0;display:flex;gap:6px;padding:12px 14px;z-index:5}
+  .seg{flex:1;height:3px;border-radius:3px;background:rgba(255,255,255,.16);overflow:hidden}
+  .seg .fill{display:block;height:100%;width:0;background:var(--go);border-radius:3px}
+  .seg.done .fill{width:100%}
+
+  .scene-label{position:absolute;bottom:3cqh;right:4cqw;font-family:var(--mfont);font-size:1.6cqh;color:var(--muted);z-index:5}
+
+  /* ---------- controls ---------- */
+  .controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center}
+  button.ctl{font-family:var(--bfont);font-size:15px;font-weight:600;color:var(--ink);background:var(--bg2);
+    border:1px solid var(--line);border-radius:10px;padding:10px 16px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;
+    transition:border-color .2s,background .2s}
+  button.ctl:hover{border-color:var(--go);background:var(--bg3)}
+  button.ctl.primary{background:var(--go);color:#06251a;border-color:var(--go)}
+  button.ctl.primary:hover{filter:brightness(1.05)}
+  button.ctl:focus-visible{outline:2px solid var(--go);outline-offset:2px}
+  .tip{color:var(--muted);font-size:13px;text-align:center;max-width:52ch;line-height:1.5}
+  .tip b{color:var(--ink)}
+
+  /* clean full-frame capture when rendered to video (?record) */
+  .recording{padding:0;gap:0;height:100%;display:block}
+  .recording .controls,.recording .tip,.recording .scene-label{display:none!important}
+  .recording .stage{width:100vw;height:100vh;max-width:none;border:0;border-radius:0;box-shadow:none}
+
+  @media (prefers-reduced-motion:reduce){
+    .r{transition:none;transform:none;opacity:1}
+    .dot.go{animation:none}
+  }
+  @media (max-width:560px){
+    .hoodies{grid-template-columns:repeat(2,1fr)}
+    .codewrap{grid-template-columns:1fr}
+    .pipe{flex-wrap:wrap}.arrow{transform:rotate(90deg)}
+    .payoff{flex-direction:column;gap:3cqh}.phone{width:46cqh;max-width:70cqw}
+  }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+
+<div class="stage" id="stage">
+  <div class="progress" id="progress"></div>
+
+  <!-- 1 -->
+  <section class="scene s-title active" data-dur="5200" data-name="Intro">
+    <span class="badge-pill r" style="--d:80ms"><span class="dot go"></span> AUTO-WATCHING THE DROP</span>
+    <h1 class="r" style="--d:200ms">Never miss<br>the drop.</h1>
+    <p class="sub r" style="--d:420ms">A tiny bot that watches ZiBrand's hoodies around the clock and pings my Telegram the second they open for order.</p>
+  </section>
+
+  <!-- 2 -->
+  <section class="scene s-problem" data-dur="7200" data-name="The problem">
+    <span class="eyebrow r">The problem</span>
+    <h2 class="r" style="--d:120ms">Every hoodie says “coming soon”.</h2>
+    <p class="lead r" style="--d:260ms">You can't order yet — and refreshing the page all day isn't a plan. Drops sell fast once they're live.</p>
+    <div class="hoodies r" style="--d:420ms">
+      <div class="hoodie"><div class="ph"><svg viewBox="0 0 24 24" fill="none" stroke="#b9a3e6" stroke-width="1.3"><path d="M7 4l5 3 5-3 4 3-3 3v10H6V10L3 7z"/></svg></div><div class="meta"><span class="nm">DNA</span><span class="cs">COMING SOON</span><span class="pr">795 EGP</span></div></div>
+      <div class="hoodie"><div class="ph"><svg viewBox="0 0 24 24" fill="none" stroke="#9bdfc5" stroke-width="1.3"><path d="M7 4l5 3 5-3 4 3-3 3v10H6V10L3 7z"/></svg></div><div class="meta"><span class="nm">DISCIPLINE</span><span class="cs">COMING SOON</span><span class="pr">795 EGP</span></div></div>
+      <div class="hoodie"><div class="ph"><svg viewBox="0 0 24 24" fill="none" stroke="#caa98a" stroke-width="1.3"><path d="M7 4l5 3 5-3 4 3-3 3v10H6V10L3 7z"/></svg></div><div class="meta"><span class="nm">BRUTALITY</span><span class="cs">COMING SOON</span><span class="pr">795 EGP</span></div></div>
+      <div class="hoodie"><div class="ph"><svg viewBox="0 0 24 24" fill="none" stroke="#b9a3e6" stroke-width="1.3"><path d="M7 4l5 3 5-3 4 3-3 3v10H6V10L3 7z"/></svg></div><div class="meta"><span class="nm">BOLD</span><span class="cs">COMING SOON</span><span class="pr">795 EGP</span></div></div>
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section class="scene" data-dur="6200" data-name="The idea">
+    <span class="eyebrow go r">The idea</span>
+    <h2 class="r" style="--d:120ms">Let a bot do the watching.</h2>
+    <div class="row r" style="--d:300ms">
+      <div class="card"><h3>👀 Watches 24/7</h3><p>Checks the store's live product feed every few minutes, in the cloud — my PC can be off.</p></div>
+      <div class="card"><h3>⚡ Pings instantly</h3><p>The moment a hoodie flips from “coming soon” to available, it sends a Telegram message.</p></div>
+      <div class="card"><h3>🧾 Says what's live</h3><p>Product, size, colour, price and a direct order link — so I just check out.</p></div>
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section class="scene" data-dur="8200" data-name="How it works">
+    <span class="eyebrow r">How it works</span>
+    <h2 class="r" style="--d:100ms">Four moving parts.</h2>
+    <div class="pipe r" style="--d:260ms">
+      <div class="node"><span class="ico">⏱️</span><span class="t">GitHub Actions</span><span class="d">A free cloud cron fires every 5 minutes.</span></div>
+      <div class="arrow">→</div>
+      <div class="node"><span class="ico">🛍️</span><span class="t">Shopify feed</span><span class="d">Reads <span style="font-family:var(--mfont);color:var(--brand-ink)">products.json</span> and checks each variant's <span style="font-family:var(--mfont);color:var(--brand-ink)">available</span> flag.</span></div>
+      <div class="arrow">→</div>
+      <div class="node"><span class="ico">🔀</span><span class="t">Detect the flip</span><span class="d">false → true means the drop just opened.</span></div>
+      <div class="arrow">→</div>
+      <div class="node"><span class="ico">📲</span><span class="t">Telegram</span><span class="d">Sends the alert straight to my phone.</span></div>
+    </div>
+  </section>
+
+  <!-- 5 -->
+  <section class="scene" data-dur="9400" data-name="Make the bot">
+    <span class="eyebrow go r">Step 1 — make the Telegram bot</span>
+    <h2 class="r" style="--d:100ms">Five taps in @BotFather.</h2>
+    <div class="steps r" style="--d:260ms">
+      <div class="step"><span class="num">1</span><span class="tx">Open <b>@BotFather</b> and send <code>/newbot</code>.</span></div>
+      <div class="step"><span class="num">2</span><span class="tx">Give it a <b>name</b> — e.g. <i>ZiBrand Stock Alert</i>.</span></div>
+      <div class="step"><span class="num">3</span><span class="tx">Pick a <b>username</b> ending in <code>bot</code>.</span></div>
+      <div class="step"><span class="num">4</span><span class="tx">Copy the <b>token</b> it gives you &nbsp;<code>8•••••••:AAH••••••••••</code>&nbsp; — keep it secret.</span></div>
+      <div class="step"><span class="num">5</span><span class="tx">Message your bot, then grab your <b>chat ID</b> from <code>/getUpdates</code>.</span></div>
+    </div>
+  </section>
+
+  <!-- 6 -->
+  <section class="scene" data-dur="9600" data-name="The code">
+    <span class="eyebrow r">Step 2 — the code</span>
+    <h2 class="r" style="--d:80ms">About 80 lines of Python + one workflow.</h2>
+    <div class="codewrap r" style="--d:240ms">
+      <div class="code">
+        <div class="bar"><i></i><i></i><i></i> check_stock.py</div>
+<pre><span class="cm"># spot the "coming soon" → live flip</span>
+<span class="kw">for</span> p <span class="kw">in</span> products:
+  <span class="kw">for</span> v <span class="kw">in</span> p[<span class="st">"variants"</span>]:
+    <span class="kw">if</span> v[<span class="st">"available"</span>]:
+      alert(p[<span class="st">"title"</span>], v[<span class="st">"title"</span>])</pre>
+      </div>
+      <div class="code">
+        <div class="bar"><i></i><i></i><i></i> send_telegram()</div>
+<pre><span class="fn">send</span>(
+  <span class="st">f"https://api.telegram.org/</span>
+  <span class="st">bot{</span><span class="nm2">TOKEN</span><span class="st">}/sendMessage"</span>,
+  chat_id=<span class="nm2">CHAT_ID</span>,
+  text=<span class="st">"🔥 Hoodie just dropped!"</span>)</pre>
+      </div>
+      <div class="code wide">
+        <div class="bar"><i></i><i></i><i></i> .github/workflows/stock-check.yml</div>
+<pre><span class="kw">on:</span>
+  <span class="kw">schedule:</span>
+    - <span class="fn">cron:</span> <span class="st">"*/5 * * * *"</span>   <span class="cm"># every 5 minutes, in the cloud</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7 -->
+  <section class="scene" data-dur="7200" data-name="Deploy">
+    <span class="eyebrow go r">Step 3 — deploy for free</span>
+    <h2 class="r" style="--d:100ms">Push it, add two secrets, done.</h2>
+    <div class="row r" style="--d:300ms">
+      <div class="card"><h3>1 · Push to GitHub</h3><p>A public repo gets unlimited free Actions minutes.</p></div>
+      <div class="card"><h3>2 · Add secrets</h3><p><span style="font-family:var(--mfont);color:var(--go-ink)">TELEGRAM_BOT_TOKEN</span> and <span style="font-family:var(--mfont);color:var(--go-ink)">TELEGRAM_CHAT_ID</span> — never in the code.</p></div>
+      <div class="card"><h3>3 · It runs itself</h3><p>Every 5 minutes, forever. Silent until a hoodie actually drops.</p></div>
+    </div>
+  </section>
+
+  <!-- 8 -->
+  <section class="scene" data-dur="7400" data-name="The payoff">
+    <span class="eyebrow go r">The payoff</span>
+    <div class="payoff">
+      <div class="phone r" style="--d:120ms">
+        <div class="tgbar"><span class="ava">ZA</span><div><div class="nm">ZiBrand Stock Alert</div><div class="st2">bot</div></div></div>
+        <div class="bubble"><span class="hl">🔥 ZiBrand hoodies just opened for order!</span><br><br>• DNA — black / L — 795 EGP<br>• BRUTALITY — brown / M — 795 EGP<br><br>Order now: <span class="lk">zibrand.store/collections/hoodies</span><span class="tm">now ✓✓</span></div>
+      </div>
+      <div style="flex:1;min-width:0">
+        <h2 class="r" style="--d:300ms;font-size:6cqw">The drop finds me.</h2>
+        <p class="lead r" style="--d:460ms;font-size:2.4cqh">No refreshing. No FOMO. Just a ping — and I'm first in line to check out.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9 -->
+  <section class="scene s-outro" data-dur="6400" data-name="Outro">
+    <span class="eyebrow go r">Open source</span>
+    <h2 class="r" style="--d:120ms">Build your own.</h2>
+    <span class="repo r" style="--d:320ms">github.com/Mohsen-Hussen/zi-brand-watcher</span>
+    <span class="kick r" style="--d:480ms">Shopify feed · GitHub Actions · Telegram — all free.</span>
+  </section>
+
+  <div class="scene-label" id="sceneLabel"></div>
+</div>
+
+<div class="controls">
+  <button class="ctl primary" id="playBtn">▶ Play the story</button>
+  <button class="ctl" id="prevBtn" aria-label="Previous scene">‹ Prev</button>
+  <button class="ctl" id="nextBtn" aria-label="Next scene">Next ›</button>
+  <button class="ctl" id="restartBtn">↻ Restart</button>
+  <button class="ctl" id="fsBtn">⛶ Fullscreen</button>
+</div>
+<p class="tip">Press <b>Play</b>, then screen-record the frame for your video. Keys: <b>Space</b> play/pause · <b>←/→</b> scenes · <b>R</b> restart. Nothing private is shown — the token, chat ID and avatar are placeholders.</p>
+
+<script>
+(function(){
+  var stage=document.getElementById('stage');
+  var scenes=Array.prototype.slice.call(stage.querySelectorAll('.scene'));
+  var progress=document.getElementById('progress');
+  var label=document.getElementById('sceneLabel');
+  var playBtn=document.getElementById('playBtn');
+  var reduce=window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+
+  // build progress segments
+  var segs=scenes.map(function(){
+    var s=document.createElement('div');s.className='seg';
+    var f=document.createElement('span');f.className='fill';s.appendChild(f);
+    progress.appendChild(s);return f;
+  });
+
+  var idx=0, playing=false, elapsed=0, last=0, raf=null;
+
+  function dur(i){return parseInt(scenes[i].getAttribute('data-dur'),10)||6000;}
+
+  function paint(){
+    scenes.forEach(function(s,i){s.classList.toggle('active',i===idx);});
+    segs.forEach(function(f,i){
+      f.parentNode.classList.toggle('done',i<idx);
+      f.style.width = i<idx ? '100%' : (i===idx ? (elapsed/dur(idx)*100)+'%' : '0%');
+    });
+    label.textContent = (idx+1)+' / '+scenes.length+'  ·  '+scenes[idx].getAttribute('data-name');
+  }
+
+  function goTo(i,keepPlay){
+    idx=Math.max(0,Math.min(scenes.length-1,i));
+    elapsed=0;last=performance.now();
+    if(keepPlay===false){stopPlay();}
+    paint();
+  }
+
+  function tick(now){
+    if(!playing){return;}
+    var dt=now-last;last=now;elapsed+=dt;
+    var d=dur(idx);
+    if(elapsed>=d){
+      if(idx>=scenes.length-1){elapsed=d;paint();stopPlay(true);return;}
+      idx++;elapsed=0;paint();
+    } else { paint(); }
+    raf=requestAnimationFrame(tick);
+  }
+
+  function startPlay(){
+    if(idx>=scenes.length-1 && elapsed>=dur(idx)){goTo(0,true);} // replay from start
+    playing=true;last=performance.now();
+    playBtn.textContent='⏸ Pause';
+    cancelAnimationFrame(raf);raf=requestAnimationFrame(tick);
+  }
+  function stopPlay(ended){
+    playing=false;cancelAnimationFrame(raf);
+    playBtn.textContent= ended ? '↻ Replay' : '▶ Play the story';
+    if(ended){ window.__storyDone=true; }
+  }
+  function toggle(){ playing?stopPlay():startPlay(); }
+
+  playBtn.addEventListener('click',toggle);
+  document.getElementById('nextBtn').addEventListener('click',function(){goTo(idx+1);if(playing){last=performance.now();}});
+  document.getElementById('prevBtn').addEventListener('click',function(){goTo(idx-1);if(playing){last=performance.now();}});
+  document.getElementById('restartBtn').addEventListener('click',function(){goTo(0);startPlay();});
+  document.getElementById('fsBtn').addEventListener('click',function(){
+    if(document.fullscreenElement){document.exitFullscreen&&document.exitFullscreen();}
+    else if(stage.requestFullscreen){stage.requestFullscreen().catch(function(){});}
+  });
+
+  document.addEventListener('keydown',function(e){
+    if(e.code==='Space'){e.preventDefault();toggle();}
+    else if(e.code==='ArrowRight'){goTo(idx+1);if(playing)last=performance.now();}
+    else if(e.code==='ArrowLeft'){goTo(idx-1);if(playing)last=performance.now();}
+    else if(e.key==='r'||e.key==='R'){goTo(0);startPlay();}
+  });
+
+  paint();
+
+  // auto-play + clean full frame when rendered to video (?record)
+  if(/record/i.test(location.search+location.hash)){
+    document.body.classList.add('recording');
+    var begin=function(){goTo(0,true);startPlay();};
+    if(document.fonts&&document.fonts.ready){document.fonts.ready.then(function(){setTimeout(begin,250);});}
+    else{setTimeout(begin,400);}
+  }
+})();
+</script>
